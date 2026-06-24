@@ -32,22 +32,22 @@ export default function BancoLanding() {
             <div className="w-10 h-10 bg-linear-to-br from-red-500 to-red-700 rounded-lg flex items-center justify-center">
               <Shield className="text-white w-6 h-6" />
             </div>
-            <span className="text-white font-bold text-xl">FinanceBank</span>
+            <span className="text-white font-bold text-xl">ForjaBank</span>
           </div>
 
           {/* MENU */}
           <div className="hidden md:flex gap-8 text-sm">
-            <a href="#" className="text-gray-300 hover:text-red-400">Sobre</a>
-            <a href="#" className="text-gray-300 hover:text-red-400">Serviços</a>
-            <a href="#" className="text-gray-300 hover:text-red-400">Segurança</a>
+            <a href="/sobre" className="text-gray-300 hover:text-red-400">Sobre</a>
+            <a href="/servicos" className="text-gray-300 hover:text-red-400">Serviços</a>
+            <a href="/seguranca" className="text-gray-300 hover:text-red-400">Segurança</a>
           </div>
 
           {/* CTA */}
           <a
-            href="/login"
+            href="/clientes/cadastro"
             className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center gap-2 transition"
           >
-            Acessar <ChevronRight size={16} />
+            Cadastrar <ChevronRight size={16} />
           </a>
         </div>
       </nav>
@@ -61,7 +61,7 @@ export default function BancoLanding() {
               Segurança Bancária 24/7
             </span>
 
-            <h1 className="text-5xl font-bold text-white">
+            <h1 className="text-5xl font-bold text-white mt-2">
               Seu banco
               <span className="block text-transparent bg-linear-to-r from-red-400 to-pink-400 bg-clip-text">
                 sempre à mão
