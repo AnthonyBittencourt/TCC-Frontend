@@ -3,7 +3,7 @@
 import Link from "next/link"
 import React, { useState } from 'react';
 import { Shield, Eye, EyeOff, ChevronRight, AlertCircle, Loader2, User } from 'lucide-react';
-import { createCliente } from './actions';
+import { cadastroAction } from './actions';
 import { useRouter } from "next/navigation";
 
 export default function CadastroPage() {
@@ -74,7 +74,7 @@ export default function CadastroPage() {
 
     setLoading(true);
     try {
-      const result = await createCliente({
+      const result = await cadastroAction({
         nome: form.nome.trim(),
         email: form.email.trim(),
         cpf: form.cpf.replace(/\D/g, ''),
@@ -86,7 +86,6 @@ export default function CadastroPage() {
       
       if (!result.success) {
         setError(result.message ?? 'Erro ao criar conta. Tente novamente.');
-        return;
       }
       
       router.push("/")
@@ -113,7 +112,7 @@ export default function CadastroPage() {
           <div className="w-10 h-10 bg-linear-to-br from-red-500 to-red-700 rounded-lg flex items-center justify-center">
             <Shield className="text-white w-6 h-6" />
           </div>
-          <span className="text-white font-bold text-xl">ForjaBank</span>
+          <span className="text-white font-bold text-xl">FinanceBank</span>
         </Link>
 
         <a
@@ -135,7 +134,7 @@ export default function CadastroPage() {
             </div>
             <h1 className="text-3xl font-bold text-white">Crie sua conta</h1>
             <p className="text-gray-400 text-sm">
-              Junte-se ao ForjaBank e gerencie suas finanças com segurança
+              Junte-se ao FinanceBank e gerencie suas finanças com segurança
             </p>
           </div>
 

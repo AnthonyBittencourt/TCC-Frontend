@@ -1,5 +1,5 @@
 export interface Conta {
-  id: string;
+  id: number;
   senha: string;
   tipo_conta: 'CORRENTE' | 'POUPANÇA' | 'UNIVERSITARIA' | 'SALARIO'
   saldo: number;

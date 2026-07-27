@@ -45,7 +45,6 @@ export default function LoginPage() {
         return;
       }
 
-      console.log("Tipo:", result.type);
 
     } catch {
       setError('Serviço indisponível. Tente novamente em instantes.');
@@ -73,7 +72,7 @@ export default function LoginPage() {
         </Link>
 
         <a
-          href="/cadastro"
+          href="/clientes/cadastro"
           className="text-sm text-gray-300 hover:text-red-400 flex items-center gap-1 transition"
         >
           Não tem conta? Cadastre-se <ChevronRight size={14} />

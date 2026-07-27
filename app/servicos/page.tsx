@@ -186,7 +186,7 @@ export default function ServicosPage() {
         <section className="px-6 py-20 border-t border-red-500/10">
           <div className="max-w-6xl mx-auto">
             <h2 className="text-3xl font-bold text-white text-center mb-16">
-              Por que escolher o FinanceBank?
+              Por que escolher o ForjaBank?
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -230,12 +230,6 @@ export default function ServicosPage() {
                 >
                   Abrir Conta Agora
                   <ChevronRight size={18} />
-                </Link>
-                <Link
-                  href="/login"
-                  className="px-8 py-3 bg-red-500/10 border border-red-500/30 text-red-300 font-bold rounded-xl hover:bg-red-500/20 transition"
-                >
-                  Fazer Login
                 </Link>
               </div>
             </div>
