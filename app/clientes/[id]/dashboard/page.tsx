@@ -139,7 +139,7 @@ export default function DashboardPage() {
     : null;
   
   const saldoTotal = cliente.contas && cliente.contas.length > 0
-    ? cliente.contas.reduce((acc, conta) => acc + conta.saldo, 0)
+    ? cliente.contas.reduce((acc, conta) => acc + Number(conta.saldo), 0)
     : 0;
   
   const transacoesRecentes = contaAtiva?.transacoes && Array.isArray(contaAtiva.transacoes)
@@ -210,7 +210,7 @@ export default function DashboardPage() {
           <div className="w-10 h-10 bg-linear-to-br from-red-500 to-red-700 rounded-lg flex items-center justify-center">
             <Shield className="text-white w-6 h-6" />
           </div>
-          <span className="text-white font-bold text-xl">FinanceBank</span>
+          <span className="text-white font-bold text-xl">ForjaBank</span>
         </Link>
 
         <div className="flex items-center gap-4">
@@ -242,7 +242,7 @@ export default function DashboardPage() {
                   Olá, {cliente.nome.split(' ')[0]}! 👋
                 </h1>
                 <p className="text-gray-400">
-                  Bem-vindo de volta ao FinanceBank
+                  Bem-vindo de volta ao ForjaBank
                 </p>
               </div>
               <div className="text-right">
@@ -285,12 +285,6 @@ export default function DashboardPage() {
       label: 'Depositar',
       color: 'from-green-500/20',
       rota: `/clientes/${clienteId}/dashboard/depositar`,
-    },
-    {
-      icon: CreditCard,
-      label: 'Cartões',
-      color: 'from-purple-500/20',
-      rota: `/clientes/${clienteId}/dashboard/cartoes`,
     },
     {
       icon: Download,
@@ -362,7 +356,7 @@ export default function DashboardPage() {
                           <p className="text-white font-bold">
                             {conta.tipo_conta === 'CORRENTE'
                               ? 'Conta Corrente'
-                              : conta.tipo_conta === 'POUPANÇA'
+                              : conta.tipo_conta === 'POUPANCA'
                                 ? 'Poupança'
                                 : conta.tipo_conta === 'UNIVERSITARIA'
                                   ? 'Universitária'
@@ -379,7 +373,7 @@ export default function DashboardPage() {
 
                       <p className="text-white text-2xl font-bold">
                         R${' '}
-                        {conta.saldo.toLocaleString('pt-BR', {
+                        {Number(conta.saldo).toLocaleString('pt-BR', {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
                         })}
@@ -508,8 +502,8 @@ export default function DashboardPage() {
                           <td
                             className={`px-6 py-4 text-right font-bold ${obterCorTransacao(transacao.tipo)}`}
                           >
-                            {transacao.valor >= 0 ? '+' : ''}R${' '}
-                            {Math.abs(transacao.valor).toLocaleString('pt-BR', {
+                            {Number(transacao.valor) >= 0 ? '+' : ''}R${' '}
+                            {Math.abs(Number(transacao.valor)).toLocaleString('pt-BR', {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2,
                             })}
@@ -570,7 +564,7 @@ export default function DashboardPage() {
         <footer className="border-t border-red-500/10 px-6 py-8 mt-8">
           <div className="max-w-7xl mx-auto text-center text-gray-500 text-sm">
             <p>
-              © 2024 FinanceBank. Todos os direitos reservados. | Segurança
+              © 2024 ForjaBank. Todos os direitos reservados. | Segurança
               24/7
             </p>
           </div>

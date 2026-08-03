@@ -1,57 +1,116 @@
 'use server';
 
 import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { revalidateTag } from 'next/cache';
+import { Cliente } from '../../../../interfaces/clientes';
 
-export interface Conta {
+export async function getCliente(id: number): Promise<Cliente> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get('access_token')?.value;
+
+  if (!token) {
+    redirect('/login');
+  }
+
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/cliente/${id}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      next: { tags: ['listar'] },
+    }
+  );
+
+  if (response.status === 401) {
+    redirect('/login');
+  }
+
+  const text = await response.text();
+
+  try {
+    return JSON.parse(text) as Cliente;
+  } catch (e) {
+    console.error('Erro ao converter JSON:', e);
+    return {} as Cliente;
+  }
+}
+
+export interface ContaEncontrada {
   id: number;
-  numero: string;
   tipo_conta: string;
-  saldo: number;
-  data_abertura: string;
-  [key: string]: unknown;
+  clienteNome?: string;
 }
 
-interface DadosTransferencia {
-  contaOrigemId: number;
-  contaDestinoId: number;
-  valor: number;
-  descricao?: string;
-}
+// Busca a conta de destino pelo campo `pix` real da conta (não é mais
+// derivado do id — o valor é o que está salvo em `conta.pix` no backend).
+export async function buscarContaPorChavePix(
+  chave: string
+): Promise<ContaEncontrada | null> {
+  const chaveLimpa = chave.trim();
 
-interface ResultadoTransferencia {
-  sucesso: boolean;
-  mensagem: string;
-  dados?: unknown;
-  erro?: string;
-}
+  if (!chaveLimpa) {
+    return null;
+  }
 
-interface ClienteData {
-  contas?: Conta[];
-  [key: string]: unknown;
-}
-
-type ApiResponse<T = unknown> = {
-  error?: string;
-  message?: string;
-  mensagem?: string;
-  dados?: T;
-  sucesso?: boolean;
-  contas?: T[];
-};
-
-export async function realizarTransferencia(
-  dados: DadosTransferencia
-): Promise<ResultadoTransferencia> {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get('access_token')?.value;
 
     if (!token) {
-      return {
-        sucesso: false,
-        mensagem: '',
-        erro: 'Autenticação necessária',
-      };
+      redirect('/login');
+    }
+
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/contas/pix/${encodeURIComponent(chaveLimpa)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (response.status === 401) {
+      redirect('/login');
+    }
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const conta = await response.json();
+
+    if (!conta?.id) {
+      return null;
+    }
+
+    return {
+      id: conta.id,
+      tipo_conta: conta.tipo_conta,
+      clienteNome: conta.cliente?.nome ?? conta.clientes?.[0]?.nome,
+    };
+  } catch (error) {
+    console.error('Erro ao buscar conta pela chave PIX:', error);
+    return null;
+  }
+}
+
+interface RealizarTransferencia {
+  contaOrigemId: number;
+  contaDestinoId: number;
+  valor: number;
+}
+
+export async function realizarTransferencia(
+  dados: RealizarTransferencia
+): Promise<boolean> {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('access_token')?.value;
+
+    if (!token) {
+      redirect('/login');
     }
 
     const response = await fetch(
@@ -67,128 +126,31 @@ export async function realizarTransferencia(
           contaOrigemId: dados.contaOrigemId,
           contaDestinoId: dados.contaDestinoId,
           valor: dados.valor,
-          descricao: dados.descricao ?? '',
         }),
-        cache: 'no-store',
       }
     );
 
-    let data: unknown = null;
+    console.log('[realizarTransferencia] status:', response.status);
 
-    try {
-      data = await response.json();
-    } catch {
-      data = null;
+    if (response.status === 401) {
+      redirect('/login');
     }
-
-    const parsedData = data as ApiResponse;
 
     if (!response.ok) {
-      return {
-        sucesso: false,
-        mensagem: '',
-        erro:
-          parsedData.error ||
-          parsedData.message ||
-          parsedData.mensagem ||
-          'Erro ao realizar transferência',
-      };
+      const corpo = await response.text();
+      console.error('[realizarTransferencia] erro do backend:', corpo);
+      return false;
     }
 
-    return {
-      sucesso: true,
-      mensagem:
-        parsedData.mensagem ||
-        parsedData.message ||
-        'Transferência realizada com sucesso',
-      dados: parsedData.dados ?? parsedData,
-    };
+    try {
+      revalidateTag('listar', 'max');
+    } catch (revalidateError) {
+      console.error('Erro ao revalidar cache:', revalidateError);
+    }
+
+    return true;
   } catch (error) {
     console.error('Erro ao realizar transferência:', error);
-
-    return {
-      sucesso: false,
-      mensagem: '',
-      erro:
-        error instanceof Error
-          ? error.message
-          : 'Erro ao processar transferência',
-    };
+    return false;
   }
-}
-
-export async function buscarContas(clienteId: number) {
-  try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('access_token')?.value;
-
-    if (!token) {
-      return {
-        sucesso: false,
-        erro: 'Autenticação necessária',
-        contas: [] as Conta[],
-      };
-    }
-
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/cliente/${clienteId}`,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        cache: 'no-store',
-      }
-    );
-
-    let data: unknown = null;
-
-    try {
-      data = await response.json();
-    } catch {
-      data = null;
-    }
-
-    const parsedData = data as ApiResponse;
-
-    if (!response.ok) {
-      return {
-        sucesso: false,
-        erro:
-          parsedData.error ||
-          parsedData.message ||
-          parsedData.mensagem ||
-          'Erro ao buscar contas',
-        contas: [] as Conta[],
-      };
-    }
-
-    const clienteData = parsedData.dados ?? parsedData;
-    const contas = isClienteData(clienteData)
-      ? (clienteData.contas ?? parsedData.contas ?? [])
-      : (parsedData.contas ?? []);
-
-    return {
-      sucesso: true,
-      contas: (contas as Conta[]) ?? [],
-    };
-  } catch (error) {
-    console.error('Erro ao buscar contas:', error);
-
-    return {
-      sucesso: false,
-      erro:
-        error instanceof Error ? error.message : 'Erro ao buscar contas',
-      contas: [] as Conta[],
-    };
-  }
-}
-
-// Type guard para validar ClienteData
-function isClienteData(data: unknown): data is ClienteData {
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    ('contas' in data || Object.keys(data).length > 0)
-  );
 }

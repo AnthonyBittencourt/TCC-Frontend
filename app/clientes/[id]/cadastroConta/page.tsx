@@ -2,23 +2,29 @@
 
 import Link from "next/link";
 import React, { useState } from 'react';
-import { Shield, Eye, EyeOff, ChevronRight, AlertCircle, Loader2, CreditCard } from 'lucide-react';
+import { Shield, Eye, EyeOff, ChevronRight, AlertCircle, Loader2, CreditCard, Key, RefreshCw, Copy, Check } from 'lucide-react';
 import { createConta } from './actions';
 import { useRouter, useParams } from "next/navigation";
 
-type TipoConta = 'CORRENTE' | 'POUPANÇA' | 'UNIVERSITARIA' | 'SALARIO';
+type TipoConta = 'CORRENTE' | 'POUPANCA' | 'UNIVERSITARIA' | 'SALARIO';
 
 const TIPOS_CONTA: { value: TipoConta; label: string; desc: string }[] = [
   { value: 'CORRENTE',      label: 'Conta Corrente',      desc: 'Para o dia a dia, transferências e pagamentos' },
-  { value: 'POUPANÇA',      label: 'Conta Poupança',      desc: 'Rendimento mensal com liquidez imediata' },
+  { value: 'POUPANCA',      label: 'Conta Poupança',      desc: 'Rendimento mensal com liquidez imediata' },
   { value: 'UNIVERSITARIA', label: 'Conta Universitária', desc: 'Benefícios exclusivos para estudantes' },
   { value: 'SALARIO',       label: 'Conta Salário',       desc: 'Receba seu salário sem tarifas' },
 ];
+
+function gerarChavePix(): string {
+  // Chave pix do tipo "aleatória" (EVP) segue o formato de um UUID v4
+  return crypto.randomUUID();
+}
 
 export default function CadastroContaPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const router = useRouter();
   const params = useParams();
   const clienteId = Number(params.id);
@@ -28,12 +34,30 @@ export default function CadastroContaPage() {
     saldo:         '',
     data_abertura: '',
     senha:         '',
+    pix:           '',
   });
+
+  function handleGerarPix() {
+    setForm(f => ({ ...f, pix: gerarChavePix() }));
+    setCopied(false);
+  }
+
+  async function handleCopiarPix() {
+    if (!form.pix) return;
+    try {
+      await navigator.clipboard.writeText(form.pix);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // clipboard indisponível, ignora silenciosamente
+    }
+  }
 
   function validateForm() {
     if (!form.tipo_conta) return 'Selecione o tipo de conta.';
     if (Number(form.saldo) < 0) return 'O saldo não pode ser negativo.';
     if (form.senha.length < 6) return 'A senha deve ter no mínimo 6 caracteres.';
+    if (!form.pix) return 'Gere uma chave Pix para a conta.';
     return null;
   }
 
@@ -51,6 +75,7 @@ export default function CadastroContaPage() {
         tipo_conta:    form.tipo_conta as TipoConta,
         saldo:         Number(form.saldo),
         data_abertura: form.data_abertura,
+        pix:           form.pix,
       });
 
       if (!conta) {
@@ -169,6 +194,50 @@ export default function CadastroContaPage() {
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
+              </div>
+
+              {/* CHAVE PIX */}
+              <div className="space-y-1.5">
+                <label htmlFor="pix" className="block text-sm text-gray-300">
+                  Chave Pix
+                </label>
+                <div className="relative">
+                  <Key size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                  <input
+                    id="pix"
+                    type="text"
+                    readOnly
+                    placeholder="Clique em gerar para criar sua chave"
+                    value={form.pix}
+                    disabled={loading}
+                    className="w-full pl-11 pr-24 py-3 bg-red-950/60 border border-red-500/20 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-red-500/60 focus:ring-1 focus:ring-red-500/40 transition disabled:opacity-50 cursor-default text-sm truncate"
+                  />
+                  {form.pix && (
+                    <button
+                      type="button"
+                      onClick={handleCopiarPix}
+                      disabled={loading}
+                      className="absolute right-11 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition"
+                      aria-label="Copiar chave Pix"
+                    >
+                      {copied ? <Check size={16} className="text-green-400" /> : <Copy size={16} />}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleGerarPix}
+                    disabled={loading}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-400 transition"
+                    aria-label="Gerar chave Pix"
+                  >
+                    <RefreshCw size={18} />
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 pl-1">
+                  {form.pix
+                    ? 'Chave aleatória gerada automaticamente para sua conta.'
+                    : 'Sua conta precisa de uma chave Pix aleatória para ser aberta.'}
+                </p>
               </div>
 
               {/* ERROR */}

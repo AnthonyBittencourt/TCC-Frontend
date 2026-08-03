@@ -10,16 +10,25 @@ function decodeJwt(token: string) {
   return JSON.parse(decoded);
 }
 
-export async function loginAction(cpf: string, password: string) {
+function isEmail(value: string) {
+  return /\S+@\S+\.\S+/.test(value);
+}
+
+export async function loginAction(identifier: string, password: string) {
   let tipo: "cliente" | "funcionario" | null = null;
   let accessToken: string | null = null;
   let userId: number | null = null;
+
+  // Se for email, manda como email; se não, assume CPF (apenas dígitos)
+  const loginPayload = isEmail(identifier)
+    ? { email: identifier.trim().toLowerCase(), senha: password }
+    : { cpf: identifier.replace(/\D/g, ""), senha: password };
 
   try {
     let response = await fetch("http://localhost:8080/funcionarios/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cpf, senha: password }),
+      body: JSON.stringify(loginPayload),
     });
 
     if (response.ok) {
@@ -27,14 +36,12 @@ export async function loginAction(cpf: string, password: string) {
       tipo = "funcionario";
       accessToken = data.access_token;
       const payload = decodeJwt(data.access_token);
-      console.log(payload);
-
       userId = payload.id;
     } else {
       response = await fetch("http://localhost:8080/clientes/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cpf, senha: password }),
+        body: JSON.stringify(loginPayload),
       });
 
       if (response.ok) {
@@ -51,17 +58,17 @@ export async function loginAction(cpf: string, password: string) {
   }
 
   if (!tipo || !accessToken || !userId) {
-    return { success: false, message: "CPF ou senha inválidos." };
+    return { success: false, message: "CPF/E-mail ou senha inválidos." };
   }
 
   const cookieStore = await cookies();
   cookieStore.set("access_token", accessToken);
   cookieStore.set("user_type", tipo);
-  cookieStore.set("user_id", String(userId)); 
+  cookieStore.set("user_id", String(userId));
 
   if (tipo === "funcionario") {
-    redirect("/dashboard/funcionario");
+    redirect(`/funcionarios/${userId}/dashboard`);
   }
 
-  redirect(`/clientes/${userId}/dashboard`); 
+  redirect(`/clientes/${userId}/dashboard`);
 }

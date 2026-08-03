@@ -6,9 +6,10 @@ import { cookies } from 'next/headers';
 
 interface CreateConta {
   senha: string;
-  tipo_conta: 'CORRENTE' | 'POUPANÇA' | 'UNIVERSITARIA' | 'SALARIO';
+  tipo_conta: 'CORRENTE' | 'POUPANCA' | 'UNIVERSITARIA' | 'SALARIO';
   saldo?: number;
   data_abertura?: string;
+  pix: string; // chave pix gerada no cadastro
 }
 
 interface ResponseConta {
@@ -17,6 +18,7 @@ interface ResponseConta {
   tipo_conta: string;
   saldo: number;
   data_abertura: string;
+  pix: string;
   [key: string]: unknown;
 }
 
@@ -45,6 +47,7 @@ export async function createConta(
           tipo_conta: conta.tipo_conta,
           saldo: conta.saldo ?? 0,
           data_abertura: conta.data_abertura ?? new Date().toISOString(),
+          pix: conta.pix,
           clienteIds: [clienteId], // conexão automática
         }),
       }
