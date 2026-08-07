@@ -84,3 +84,54 @@ export async function atualizarSaldo(
     return false;
   }
 }
+
+// Cria o registro de Transacao do depósito. O atualizarSaldo acima só
+// altera o saldo da conta — sem isso, o depósito nunca aparece no extrato,
+// já que o extrato lista a partir de Transacao, não do saldo em si.
+export async function criarTransacaoDeposito(
+  contaId: number,
+  valor: number,
+  descricao?: string
+): Promise<boolean> {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('access_token')?.value;
+
+    if (!token) {
+      redirect('/login');
+    }
+
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/transacoes`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          tipo: 'DEPOSITO',
+          valor,
+          descricao: descricao || 'Depósito',
+          contaIds: [contaId],
+        }),
+      }
+    );
+
+    if (response.status === 401) {
+      redirect('/login');
+    }
+
+    if (!response.ok) {
+      console.error(await response.text());
+      return false;
+    }
+
+    revalidateTag('listar', "max");
+
+    return true;
+  } catch (error) {
+    console.error('Erro ao criar transação de depósito:', error);
+    return false;
+  }
+}

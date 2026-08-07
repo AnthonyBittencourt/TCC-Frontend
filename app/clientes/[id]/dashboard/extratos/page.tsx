@@ -74,23 +74,19 @@ export default function ExtratoPage() {
     router.push('/login');
   };
 
-  const obterIconeTransacao = (tipo: string) => {
-    switch (tipo) {
-      case 'DEPOSITO':
-      case 'TRANSFERENCIA':
-        return <ArrowDownLeft className="w-5 h-5 text-green-400" />;
-      case 'SAQUE':
-      case 'PAGAMENTO':
-        return <ArrowUpRight className="w-5 h-5 text-red-400" />;
-      default:
-        return <TrendingUp className="w-5 h-5 text-gray-400" />;
-    }
+  // Entrada/saída são definidas pelo SINAL do valor, não pelo tipo —
+  // uma TRANSFERENCIA gera dois registros com o mesmo tipo, um positivo
+  // (quem recebe) e um negativo (quem envia).
+  const obterIconeTransacao = (valor: number) => {
+    return valor >= 0 ? (
+      <ArrowDownLeft className="w-5 h-5 text-green-400" />
+    ) : (
+      <ArrowUpRight className="w-5 h-5 text-red-400" />
+    );
   };
 
-  const obterCorTransacao = (tipo: string) => {
-    return ['DEPOSITO', 'TRANSFERENCIA'].includes(tipo)
-      ? 'text-green-400'
-      : 'text-red-400';
+  const obterCorTransacao = (valor: number) => {
+    return valor >= 0 ? 'text-green-400' : 'text-red-400';
   };
 
   const obterLabelTransacao = (tipo: string) => {
@@ -144,11 +140,11 @@ export default function ExtratoPage() {
   );
 
   const somaEntradas = transacoesFiltradas
-    .filter((t) => ['DEPOSITO', 'TRANSFERENCIA'].includes(t.tipo))
+    .filter((t) => t.valor > 0)
     .reduce((acc, t) => acc + t.valor, 0);
 
   const somaSaidas = transacoesFiltradas
-    .filter((t) => ['SAQUE', 'PAGAMENTO'].includes(t.tipo))
+    .filter((t) => t.valor < 0)
     .reduce((acc, t) => acc + Math.abs(t.valor), 0);
 
   const handleExportarTXT = () => {
@@ -209,7 +205,7 @@ ${transacoesFiltradas
           <div className="w-10 h-10 bg-linear-to-br from-red-500 to-red-700 rounded-lg flex items-center justify-center">
             <Shield className="text-white w-6 h-6" />
           </div>
-          <span className="text-white font-bold text-xl">FinanceBank</span>
+          <span className="text-white font-bold text-xl">ForjaBank</span>
         </Link>
 
         <div className="flex items-center gap-4">
@@ -437,7 +433,7 @@ ${transacoesFiltradas
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-3">
                                 <div className="p-2 bg-red-500/10 rounded-lg">
-                                  {obterIconeTransacao(transacao.tipo)}
+                                  {obterIconeTransacao(transacao.valor)}
                                 </div>
                                 <div>
                                   <p className="text-white font-bold">
@@ -456,7 +452,7 @@ ${transacoesFiltradas
                               {transacao.descricao}
                             </td>
                             <td
-                              className={`px-6 py-4 text-right font-bold ${obterCorTransacao(transacao.tipo)}`}
+                              className={`px-6 py-4 text-right font-bold ${obterCorTransacao(transacao.valor)}`}
                             >
                               {transacao.valor >= 0 ? '+' : ''}R${' '}
                               {Math.abs(transacao.valor).toLocaleString(

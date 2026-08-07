@@ -72,6 +72,7 @@ interface AbaConfig {
   rotaEditar: (id: number) => string;
   colunas: Coluna[];
   buscaCampos: string[];
+  permiteCriar?: boolean;
 }
 
 /* ============================
@@ -115,8 +116,8 @@ const ABAS: AbaConfig[] = [
     icon: Users,
     listar: listarClientes,
     excluir: excluirCliente,
-    rotaNova: '/funcionario/clientes/novo',
-    rotaEditar: (id) => `/funcionario/clientes/${id}`,
+    rotaNova: '/funcionarios/criarCliente',
+    rotaEditar: (id) => `/funcionarios/cliente/${id}`,
     buscaCampos: ['nome', 'email', 'cpf'],
     colunas: [
       { header: 'Nome', render: (i) => texto(i.nome) },
@@ -133,8 +134,8 @@ const ABAS: AbaConfig[] = [
     icon: UserCog,
     listar: listarFuncionarios,
     excluir: excluirFuncionario,
-    rotaNova: '/funcionario/funcionarios/novo',
-    rotaEditar: (id) => `/funcionario/funcionarios/${id}`,
+    rotaNova: '/funcionarios/criarFuncionario',
+    rotaEditar: (id) => `/funcionarios/funcionario/${id}`,
     buscaCampos: ['nome', 'email'],
     colunas: [
       { header: 'Nome', render: (i) => texto(i.nome) },
@@ -170,21 +171,23 @@ const ABAS: AbaConfig[] = [
     icon: Wallet,
     listar: listarContas,
     excluir: excluirConta,
-    rotaNova: '/funcionario/contas/novo',
-    rotaEditar: (id) => `/funcionario/contas/${id}`,
+    rotaNova: '/funcionarios/criarConta',
+    rotaEditar: (id) => `/funcionarios/conta/${id}`,
     buscaCampos: ['tipo_conta', 'cliente_nome'],
     colunas: [
       { header: 'ID', render: (i) => `#${texto(i.id)}` },
       { header: 'Tipo', render: (i) => texto(i.tipo_conta) },
       {
-        header: 'Cliente',
-        render: (i) =>
-          texto(paraObjeto(i.cliente)?.nome ?? i.cliente_nome ?? i.clienteId),
-      },
-      {
-        header: 'Saldo',
-        render: (i) => formatarMoeda(i.saldo),
-        className: 'text-right font-bold',
+        header: "Cliente",
+        render: (i) => {
+          const clientes = paraArray(i.clientes);
+
+          if (clientes.length === 0) return "—";
+
+          return clientes
+            .map((c) => texto(c.nome))
+            .join(", ");
+        },
       },
       { header: 'Aberta em', render: (i) => formatarData(i.data_abertura) },
     ],
@@ -212,8 +215,8 @@ const ABAS: AbaConfig[] = [
     icon: CreditCard,
     listar: listarCartoes,
     excluir: excluirCartao,
-    rotaNova: '/funcionario/cartoes/novo',
-    rotaEditar: (id) => `/funcionario/cartoes/${id}`,
+    rotaNova: '/funcionarios/criarCartao',
+    rotaEditar: (id) => `/funcionarios/cartao/${id}`,
     buscaCampos: ['numero_cartao', 'tipoCartao'],
     colunas: [
       {
@@ -222,7 +225,7 @@ const ABAS: AbaConfig[] = [
       },
       {
         header: 'Tipo',
-        render: (i) => (i.tipoCartao === 'DEBITO' ? 'Débito' : 'Crédito'),
+        render: (i) => (i.tipo_cartao === 'DEBITO' ? 'Débito' : 'Crédito'),
       },
       { header: 'Validade', render: (i) => formatarData(i.validade) },
       {
@@ -241,6 +244,7 @@ const ABAS: AbaConfig[] = [
     rotaNova: '/funcionario/transacoes/novo',
     rotaEditar: (id) => `/funcionario/transacoes/${id}`,
     buscaCampos: ['tipo'],
+    permiteCriar: false,
     colunas: [
       { header: 'Tipo', render: (i) => texto(i.tipo) },
       {
@@ -248,11 +252,7 @@ const ABAS: AbaConfig[] = [
         render: (i) => formatarMoeda(i.valor),
         className: 'text-right font-bold',
       },
-      { header: 'Data', render: (i) => formatarData(i.data) },
-      {
-        header: 'Conta',
-        render: (i) => texto(paraObjeto(i.conta)?.id ?? i.contaId),
-      },
+      { header: 'Data', render: (i) => formatarData(i.dataTransacao) },
     ],
   },
 ];
@@ -307,6 +307,8 @@ useEffect(() => {
       const resultado = await config.listar();
 
       if (!ativo) return;
+
+      console.log(JSON.stringify(resultado, null, 2));
 
       setDados(Array.isArray(resultado) ? resultado : []);
     } catch (err) {
@@ -485,13 +487,15 @@ useEffect(() => {
                     <RefreshCw className="w-4 h-4" />
                   </button>
 
-                  <button
-                    onClick={() => router.push(config.rotaNova)}
-                    className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold transition flex items-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span className="hidden sm:inline">Novo</span>
-                  </button>
+                  {config.permiteCriar !== false && (
+                    <button
+                      onClick={() => router.push(config.rotaNova)}
+                      className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold transition flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span className="hidden sm:inline">Novo</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -546,7 +550,16 @@ useEffect(() => {
                         return (
                           <tr
                             key={id}
-                            className="border-b border-red-500/5 hover:bg-red-500/5 transition"
+                            onClick={() => {
+                              if (abaAtiva === "contas") {
+                                router.push(`/funcionarios/listarContas/${id}`);
+                              }
+                            }}
+                            className={`border-b border-red-500/5 transition ${
+                              abaAtiva === "contas"
+                                ? "cursor-pointer hover:bg-red-500/10"
+                                : "hover:bg-red-500/5"
+                            }`}
                           >
                             {config.colunas.map((coluna) => (
                               <td
@@ -559,14 +572,20 @@ useEffect(() => {
                             <td className="px-6 py-4">
                               <div className="flex items-center justify-end gap-2">
                                 <button
-                                  onClick={() => router.push(config.rotaEditar(id))}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      router.push(config.rotaEditar(id));
+                                    }}
                                   className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition"
                                   aria-label={`Editar ${config.labelSingular}`}
                                 >
                                   <Pencil className="w-4 h-4" />
                                 </button>
                                 <button
-                                  onClick={() => handleExcluir(item)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleExcluir(item);
+                                    }}
                                   disabled={excluindoId === id}
                                   className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition disabled:opacity-50"
                                   aria-label={`Excluir ${config.labelSingular}`}

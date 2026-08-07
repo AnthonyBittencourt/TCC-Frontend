@@ -17,7 +17,7 @@ import {
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
 import { Cliente, Conta } from '../../../../interfaces/clientes';
-import { getCliente, atualizarSaldo } from './actions';
+import { getCliente, atualizarSaldo, criarTransacaoDeposito } from './actions';
 
 export default function DepositarPage() {
   const router = useRouter();
@@ -94,11 +94,25 @@ export default function DepositarPage() {
     setError(null);
 
     try {
-      const novoSaldo = Number(contaSelecionada.saldo) + parseFloat(valor);
+      const valorNumerico = parseFloat(valor);
+      const novoSaldo = Number(contaSelecionada.saldo) + valorNumerico;
       const ok = await atualizarSaldo(contaSelecionada.id, { saldo: novoSaldo });
 
       if (!ok) {
         throw new Error('Erro ao processar depósito');
+      }
+
+      // Registra a transação para aparecer no extrato — o atualizarSaldo
+      // acima só altera o saldo, não cria histórico.
+      const transacaoOk = await criarTransacaoDeposito(
+        contaSelecionada.id,
+        valorNumerico
+      );
+
+      if (!transacaoOk) {
+        console.error(
+          'Saldo atualizado, mas falha ao registrar a transação de depósito'
+        );
       }
 
       setSuccess(true);
@@ -134,7 +148,7 @@ export default function DepositarPage() {
           <div className="w-10 h-10 bg-linear-to-br from-red-500 to-red-700 rounded-lg flex items-center justify-center">
             <Shield className="text-white w-6 h-6" />
           </div>
-          <span className="text-white font-bold text-xl">FinanceBank</span>
+          <span className="text-white font-bold text-xl">ForjaBank</span>
         </Link>
 
         <div className="flex items-center gap-4">

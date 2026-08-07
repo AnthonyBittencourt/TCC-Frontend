@@ -11,7 +11,7 @@ function decodeJwt(token: string) {
 }
 
 function isEmail(value: string) {
-  return /\S+@\S+\.\S+/.test(value);
+  return /\S+@.\S+\.\S+/.test(value);
 }
 
 export async function loginAction(identifier: string, password: string) {
@@ -24,6 +24,9 @@ export async function loginAction(identifier: string, password: string) {
     ? { email: identifier.trim().toLowerCase(), senha: password }
     : { cpf: identifier.replace(/\D/g, ""), senha: password };
 
+
+    console.log(loginPayload);
+
   try {
     let response = await fetch("http://localhost:8080/funcionarios/login", {
       method: "POST",
@@ -31,11 +34,20 @@ export async function loginAction(identifier: string, password: string) {
       body: JSON.stringify(loginPayload),
     });
 
+    
+  console.log("Status funcionario:", response.status);
+
     if (response.ok) {
       const data = await response.json();
+
+      console.log(data);
+
       tipo = "funcionario";
       accessToken = data.access_token;
       const payload = decodeJwt(data.access_token);
+
+      console.log(payload);
+
       userId = payload.id;
     } else {
       response = await fetch("http://localhost:8080/clientes/login", {

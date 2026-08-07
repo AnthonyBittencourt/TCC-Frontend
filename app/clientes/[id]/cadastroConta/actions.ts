@@ -2,6 +2,7 @@
 
 import { revalidateTag } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { isRedirectError } from 'next/dist/client/components/redirect-error';
 import { cookies } from 'next/headers';
 
 interface CreateConta {
@@ -9,7 +10,7 @@ interface CreateConta {
   tipo_conta: 'CORRENTE' | 'POUPANCA' | 'UNIVERSITARIA' | 'SALARIO';
   saldo?: number;
   data_abertura?: string;
-  pix: string; // chave pix gerada no cadastro
+  pix: string;
 }
 
 interface ResponseConta {
@@ -30,32 +31,25 @@ export async function createConta(
     const cookieStore = await cookies();
     const token = cookieStore.get('access_token')?.value;
 
-    if (!token) {
-      redirect('/login');
-    }
+    if (!token) redirect('/login');
 
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/contas`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          senha: conta.senha,
-          tipo_conta: conta.tipo_conta,
-          saldo: conta.saldo ?? 0,
-          data_abertura: conta.data_abertura ?? new Date().toISOString(),
-          pix: conta.pix,
-          clienteIds: [clienteId], // conexão automática
-        }),
-      }
-    );
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/contas`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        senha: conta.senha,
+        tipo_conta: conta.tipo_conta,
+        saldo: conta.saldo ?? 0,
+        data_abertura: conta.data_abertura ?? new Date().toISOString(),
+        pix: conta.pix,
+        clienteIds: [clienteId],
+      }),
+    });
 
-    if (response.status === 401) {
-      redirect('/login');
-    }
+    if (response.status === 401) redirect('/login');
 
     if (!response.ok) {
       console.error(await response.text());
@@ -68,6 +62,7 @@ export async function createConta(
 
     return contaData;
   } catch (error) {
+    if (isRedirectError(error)) throw error;
     console.error('Erro ao criar conta:', error);
     return null;
   }
@@ -78,23 +73,16 @@ export async function deleteConta(contaId: number): Promise<boolean> {
     const cookieStore = await cookies();
     const token = cookieStore.get('access_token')?.value;
 
-    if (!token) {
-      redirect('/login');
-    }
+    if (!token) redirect('/login');
 
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/contas/${contaId}`,
-      {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/contas/${contaId}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-    if (response.status === 401) {
-      redirect('/login');
-    }
+    if (response.status === 401) redirect('/login');
 
     if (!response.ok) {
       console.error(await response.text());
@@ -105,6 +93,7 @@ export async function deleteConta(contaId: number): Promise<boolean> {
 
     return true;
   } catch (error) {
+    if (isRedirectError(error)) throw error;
     console.error('Erro ao deletar conta:', error);
     return false;
   }

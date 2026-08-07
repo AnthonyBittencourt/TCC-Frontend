@@ -37,6 +37,84 @@ export async function getCliente(id: number): Promise<Cliente> {
   }
 }
 
+export interface TransacaoConta {
+  id: number;
+  tipo: string;
+  valor: number;
+  descricao?: string;
+  dataTransacao: string;
+}
+
+export interface Conta {
+  id: number;
+  tipo_conta: string;
+  saldo: number;
+  data_abertura: string;
+  pix: string;
+  transacoes?: TransacaoConta[];
+}
+
+interface BuscarContasResultado {
+  sucesso: boolean;
+  contas?: Conta[];
+  erro?: string;
+}
+
+interface ContaBruta {
+  id: number;
+  tipo_conta: string;
+  saldo: number | string;
+  data_abertura: string;
+  pix: string;
+  transacoes?: TransacaoBruta[];
+}
+
+interface TransacaoBruta {
+  id: number;
+  tipo: string;
+  valor: number | string;
+  descricao?: string;
+  dataTransacao: string;
+}
+
+// Reaproveita o getCliente (que já traz as contas com as transações
+// aninhadas) e normaliza os campos numéricos, já que o backend pode
+// devolver saldo/valor como string (Decimal do Prisma serializado).
+export async function buscarContas(
+  clienteId: number
+): Promise<BuscarContasResultado> {
+  try {
+    const cliente = await getCliente(clienteId);
+    const contasBrutas = cliente?.contas as unknown as ContaBruta[] | undefined;
+
+    if (!contasBrutas) {
+      return { sucesso: false, erro: 'Nenhuma conta encontrada' };
+    }
+
+    const contas: Conta[] = contasBrutas.map((conta) => ({
+      id: conta.id,
+      tipo_conta: conta.tipo_conta,
+      saldo: Number(conta.saldo),
+      data_abertura: conta.data_abertura,
+      pix: conta.pix,
+      transacoes: Array.isArray(conta.transacoes)
+        ? conta.transacoes.map((t) => ({
+            id: t.id,
+            tipo: t.tipo,
+            valor: Number(t.valor),
+            descricao: t.descricao,
+            dataTransacao: t.dataTransacao,
+          }))
+        : [],
+    }));
+
+    return { sucesso: true, contas };
+  } catch (error) {
+    console.error('Erro ao buscar contas:', error);
+    return { sucesso: false, erro: 'Erro ao buscar contas' };
+  }
+}
+
 export interface ContaEncontrada {
   id: number;
   tipo_conta: string;
@@ -100,6 +178,7 @@ interface RealizarTransferencia {
   contaOrigemId: number;
   contaDestinoId: number;
   valor: number;
+  descricao?: string;
 }
 
 export async function realizarTransferencia(
@@ -126,6 +205,7 @@ export async function realizarTransferencia(
           contaOrigemId: dados.contaOrigemId,
           contaDestinoId: dados.contaDestinoId,
           valor: dados.valor,
+          descricao: dados.descricao || undefined,
         }),
       }
     );

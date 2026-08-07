@@ -47,6 +47,7 @@ export default function TransferirPage() {
   const [erroBusca, setErroBusca] = useState<string | null>(null);
 
   const [valor, setValor] = useState('');
+  const [descricao, setDescricao] = useState('');
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -157,6 +158,7 @@ export default function TransferirPage() {
         contaOrigemId: contaOrigem.id,
         contaDestinoId,
         valor: parseFloat(valor),
+        descricao: descricao.trim() || undefined,
       });
 
       if (!ok) {
@@ -196,7 +198,7 @@ export default function TransferirPage() {
           <div className="w-10 h-10 bg-linear-to-br from-red-500 to-red-700 rounded-lg flex items-center justify-center">
             <Shield className="text-white w-6 h-6" />
           </div>
-          <span className="text-white font-bold text-xl">FinanceBank</span>
+          <span className="text-white font-bold text-xl">ForjaBank</span>
         </Link>
 
         <div className="flex items-center gap-4">
@@ -499,7 +501,7 @@ export default function TransferirPage() {
                 </>
               )}
 
-              {/* STEP 3: VALOR E CONFIRMAÇÃO */}
+              {/* STEP 3: VALOR, DESCRIÇÃO E CONFIRMAÇÃO */}
               {step === 3 && contaOrigem && podeAvancarParaValor && (
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="bg-red-900/20 border border-red-500/10 rounded-2xl p-6 backdrop-blur-sm space-y-4">
@@ -540,6 +542,27 @@ export default function TransferirPage() {
                         className="flex-1 bg-red-950/50 border border-red-500/20 text-white placeholder-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-red-500/50 transition text-lg"
                       />
                     </div>
+                  </div>
+
+                  <div className="bg-red-900/20 border border-red-500/10 rounded-2xl p-6 backdrop-blur-sm">
+                    <label className="block text-white font-bold mb-3">
+                      Descrição{' '}
+                      <span className="text-gray-500 font-normal">
+                        (opcional)
+                      </span>
+                    </label>
+                    <textarea
+                      name="descricao"
+                      placeholder="Ex: Aluguel, divisão da conta, presente..."
+                      maxLength={140}
+                      rows={2}
+                      value={descricao}
+                      onChange={(e) => setDescricao(e.target.value)}
+                      className="w-full resize-none bg-red-950/50 border border-red-500/20 text-white placeholder-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-red-500/50 transition text-sm"
+                    />
+                    <p className="text-gray-500 text-xs mt-1 text-right">
+                      {descricao.length}/140
+                    </p>
                   </div>
 
                   <div className="flex gap-4">
