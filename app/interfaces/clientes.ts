@@ -13,7 +13,7 @@ export interface Conta {
 }
 
 export interface Cartao {
-  id: string;
+  id: number;
   tipoCartao: "DEBITO" | "CREDITO";
   numero_cartao: number;
   cvv: string;  
@@ -21,11 +21,11 @@ export interface Cartao {
 }
 
 export interface Transacao {
-  id: string;
+  id: number;
+  tipo: "DEPOSITO" | "SAQUE" | "TRANSFERENCIA" | "PAGAMENTO" | "RENDIMENTO";
   valor: number; // positivo = entrada, negativo = saída
-  tipo: "DEPOSITO" | "SAQUE" | "TRANSFERENCIA" | "PAGAMENTO";
-  data: string; // ISO 8601
-  descricao?: string
+  descricao: string | null
+  dataTransacao: string; // ISO 8601
 }
 
 export interface Cliente {

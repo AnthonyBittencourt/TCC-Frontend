@@ -58,12 +58,18 @@ export async function createConta(
 
     const contaData = (await response.json()) as ResponseConta;
 
-    revalidateTag('listar', 'max');
+    try{
+      revalidateTag('listar', 'max');
+    } catch (revalidateError) {
+      console.error("Erro ao revalidar cache:", revalidateError)
+    }
+    
 
     return contaData;
   } catch (error) {
     if (isRedirectError(error)) throw error;
     console.error('Erro ao criar conta:', error);
+    console.error('Tipo do erro:', (error as Error)?.message);
     return null;
   }
 }

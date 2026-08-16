@@ -5,37 +5,12 @@ import { redirect } from 'next/navigation';
 import { revalidateTag } from 'next/cache';
 import { Cliente } from '../../../../interfaces/clientes';
 
-export async function getCliente(id: number): Promise<Cliente> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('access_token')?.value;
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
 
-  if (!token) {
-    redirect('/login');
-  }
-
-  const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/cliente/${id}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      next: { tags: ['listar'] },
-    }
-  );
-
-  if (response.status === 401) {
-    redirect('/login');
-  }
-
-  const text = await response.text();
-
-  try {
-    return JSON.parse(text) as Cliente;
-  } catch (e) {
-    console.error('Erro ao converter JSON:', e);
-    return {} as Cliente;
-  }
-}
+// =========================================================
+// TIPOS
+// =========================================================
 
 export interface TransacaoConta {
   id: number;
@@ -74,45 +49,10 @@ interface TransacaoBruta {
   tipo: string;
   valor: number | string;
   descricao?: string;
-  dataTransacao: string;
-}
-
-// Reaproveita o getCliente (que já traz as contas com as transações
-// aninhadas) e normaliza os campos numéricos, já que o backend pode
-// devolver saldo/valor como string (Decimal do Prisma serializado).
-export async function buscarContas(
-  clienteId: number
-): Promise<BuscarContasResultado> {
-  try {
-    const cliente = await getCliente(clienteId);
-    const contasBrutas = cliente?.contas as unknown as ContaBruta[] | undefined;
-
-    if (!contasBrutas) {
-      return { sucesso: false, erro: 'Nenhuma conta encontrada' };
-    }
-
-    const contas: Conta[] = contasBrutas.map((conta) => ({
-      id: conta.id,
-      tipo_conta: conta.tipo_conta,
-      saldo: Number(conta.saldo),
-      data_abertura: conta.data_abertura,
-      pix: conta.pix,
-      transacoes: Array.isArray(conta.transacoes)
-        ? conta.transacoes.map((t) => ({
-            id: t.id,
-            tipo: t.tipo,
-            valor: Number(t.valor),
-            descricao: t.descricao,
-            dataTransacao: t.dataTransacao,
-          }))
-        : [],
-    }));
-
-    return { sucesso: true, contas };
-  } catch (error) {
-    console.error('Erro ao buscar contas:', error);
-    return { sucesso: false, erro: 'Erro ao buscar contas' };
-  }
+  dataTransacao?: string;
+  data?: string;
+  contaOrigemId?: number | null;
+  contaDestinoId?: number | null;
 }
 
 export interface ContaEncontrada {
@@ -121,8 +61,154 @@ export interface ContaEncontrada {
   clienteNome?: string;
 }
 
-// Busca a conta de destino pelo campo `pix` real da conta (não é mais
-// derivado do id — o valor é o que está salvo em `conta.pix` no backend).
+interface RealizarTransferencia {
+  contaOrigemId: number;
+  contaDestinoId: number;
+  valor: number;
+  descricao?: string;
+}
+
+interface ErroBackend {
+  error?: string;
+  message?: string;
+}
+
+// =========================================================
+// GET CLIENTE
+// =========================================================
+
+export async function getCliente(
+  id: number
+): Promise<Cliente> {
+  const cookieStore = await cookies();
+
+  const token = cookieStore.get('access_token')?.value;
+
+  if (!token) {
+    redirect('/login');
+  }
+
+  const response = await fetch(
+    `${API_URL}/cliente/${id}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+
+      next: {
+        tags: [`cliente-${id}`, 'listar'],
+      },
+    }
+  );
+
+  if (response.status === 401) {
+    redirect('/login');
+  }
+
+  if (!response.ok) {
+    const texto = await response.text();
+
+    console.error(
+      '[getCliente] erro:',
+      response.status,
+      texto
+    );
+
+    throw new Error(
+      `Erro ao buscar cliente (${response.status})`
+    );
+  }
+
+  const text = await response.text();
+
+  try {
+    return JSON.parse(text) as Cliente;
+  } catch (error) {
+    console.error(
+      '[getCliente] erro ao converter JSON:',
+      error
+    );
+
+    throw new Error('Resposta inválida do servidor');
+  }
+}
+
+// =========================================================
+// BUSCAR CONTAS
+// =========================================================
+
+export async function buscarContas(
+  clienteId: number
+): Promise<BuscarContasResultado> {
+  try {
+    const cliente = await getCliente(clienteId);
+
+    const contasBrutas =
+      cliente?.contas as unknown as
+        | ContaBruta[]
+        | undefined;
+
+    if (!Array.isArray(contasBrutas)) {
+      return {
+        sucesso: false,
+        erro: 'Nenhuma conta encontrada',
+      };
+    }
+
+    const contas: Conta[] = contasBrutas.map((conta) => ({
+      id: conta.id,
+      tipo_conta: conta.tipo_conta,
+      saldo: Number(conta.saldo),
+      data_abertura: conta.data_abertura,
+      pix: conta.pix,
+
+      transacoes: Array.isArray(conta.transacoes)
+        ? conta.transacoes.map((transacao) => {
+            const valorAbsoluto = Math.abs(
+              Number(transacao.valor)
+            );
+
+            const ehSaida =
+              Number(transacao.contaOrigemId) ===
+              Number(conta.id);
+
+            return {
+              id: transacao.id,
+              tipo: transacao.tipo,
+              valor: ehSaida
+                ? -valorAbsoluto
+                : valorAbsoluto,
+              descricao: transacao.descricao,
+              dataTransacao:
+                transacao.dataTransacao ??
+                transacao.data ??
+                '',
+            };
+          })
+        : [],
+    }));
+
+    return {
+      sucesso: true,
+      contas,
+    };
+  } catch (error) {
+    console.error(
+      '[buscarContas] erro:',
+      error
+    );
+
+    return {
+      sucesso: false,
+      erro: 'Erro ao buscar contas',
+    };
+  }
+}
+
+// =========================================================
+// BUSCAR CONTA POR PIX
+// =========================================================
+
 export async function buscarContaPorChavePix(
   chave: string
 ): Promise<ContaEncontrada | null> {
@@ -134,14 +220,18 @@ export async function buscarContaPorChavePix(
 
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get('access_token')?.value;
+
+    const token =
+      cookieStore.get('access_token')?.value;
 
     if (!token) {
       redirect('/login');
     }
 
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/contas/pix/${encodeURIComponent(chaveLimpa)}`,
+      `${API_URL}/contas/pix/${encodeURIComponent(
+        chaveLimpa
+      )}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -153,7 +243,16 @@ export async function buscarContaPorChavePix(
       redirect('/login');
     }
 
+    if (response.status === 404) {
+      return null;
+    }
+
     if (!response.ok) {
+      console.error(
+        '[buscarContaPorChavePix] status:',
+        response.status
+      );
+
       return null;
     }
 
@@ -164,73 +263,184 @@ export async function buscarContaPorChavePix(
     }
 
     return {
-      id: conta.id,
+      id: Number(conta.id),
       tipo_conta: conta.tipo_conta,
-      clienteNome: conta.cliente?.nome ?? conta.clientes?.[0]?.nome,
+      clienteNome:
+        conta.cliente?.nome ??
+        conta.clientes?.[0]?.nome,
     };
   } catch (error) {
-    console.error('Erro ao buscar conta pela chave PIX:', error);
+    console.error(
+      '[buscarContaPorChavePix] erro:',
+      error
+    );
+
     return null;
   }
 }
 
-interface RealizarTransferencia {
-  contaOrigemId: number;
-  contaDestinoId: number;
-  valor: number;
-  descricao?: string;
-}
+// =========================================================
+// REALIZAR TRANSFERÊNCIA
+// =========================================================
 
 export async function realizarTransferencia(
   dados: RealizarTransferencia
-): Promise<boolean> {
+): Promise<{
+  sucesso: boolean;
+  erro?: string;
+}> {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get('access_token')?.value;
+
+    const token =
+      cookieStore.get('access_token')?.value;
 
     if (!token) {
       redirect('/login');
     }
 
+    // -----------------------------------------
+    // VALIDAÇÕES FRONT/BACK
+    // -----------------------------------------
+
+    if (
+      !Number.isInteger(dados.contaOrigemId) ||
+      !Number.isInteger(dados.contaDestinoId)
+    ) {
+      return {
+        sucesso: false,
+        erro: 'IDs das contas inválidos.',
+      };
+    }
+
+    if (
+      !Number.isFinite(dados.valor) ||
+      dados.valor <= 0
+    ) {
+      return {
+        sucesso: false,
+        erro: 'O valor deve ser maior que zero.',
+      };
+    }
+
+    if (
+      dados.contaOrigemId ===
+      dados.contaDestinoId
+    ) {
+      return {
+        sucesso: false,
+        erro:
+          'A conta de origem e destino não podem ser iguais.',
+      };
+    }
+
+    // -----------------------------------------
+    // REQUEST
+    // -----------------------------------------
+
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/transacoes`,
+      `${API_URL}/transacoes`,
       {
         method: 'POST',
+
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
+
         body: JSON.stringify({
           tipo: 'TRANSFERENCIA',
-          contaOrigemId: dados.contaOrigemId,
-          contaDestinoId: dados.contaDestinoId,
+
+          contaOrigemId:
+            dados.contaOrigemId,
+
+          contaDestinoId:
+            dados.contaDestinoId,
+
           valor: dados.valor,
-          descricao: dados.descricao || undefined,
+
+          descricao:
+            dados.descricao?.trim() ||
+            undefined,
         }),
       }
     );
 
-    console.log('[realizarTransferencia] status:', response.status);
+    console.log(
+      '[realizarTransferencia] status:',
+      response.status
+    );
+
+    // -----------------------------------------
+    // TOKEN EXPIRADO
+    // -----------------------------------------
 
     if (response.status === 401) {
       redirect('/login');
     }
 
-    if (!response.ok) {
-      const corpo = await response.text();
-      console.error('[realizarTransferencia] erro do backend:', corpo);
-      return false;
+    // -----------------------------------------
+    // RESPOSTA DO BACKEND
+    // -----------------------------------------
+
+    const texto = await response.text();
+
+    let resposta: ErroBackend = {};
+
+    try {
+      resposta = texto
+        ? JSON.parse(texto)
+        : {};
+    } catch {
+      console.error(
+        '[realizarTransferencia] resposta não JSON:',
+        texto
+      );
     }
+
+    if (!response.ok) {
+      console.error(
+        '[realizarTransferencia] erro backend:',
+        resposta
+      );
+
+      return {
+        sucesso: false,
+        erro:
+          resposta.error ??
+          resposta.message ??
+          'Erro ao realizar transferência.',
+      };
+    }
+
+    // -----------------------------------------
+    // ATUALIZA CACHE
+    // -----------------------------------------
 
     try {
       revalidateTag('listar', 'max');
-    } catch (revalidateError) {
-      console.error('Erro ao revalidar cache:', revalidateError);
+    } catch (error) {
+      console.error(
+        '[realizarTransferencia] erro ao revalidar cache:',
+        error
+      );
     }
 
-    return true;
+    return {
+      sucesso: true,
+    };
   } catch (error) {
-    console.error('Erro ao realizar transferência:', error);
-    return false;
+    console.error(
+      '[realizarTransferencia] erro:',
+      error
+    );
+
+    return {
+      sucesso: false,
+      erro:
+        error instanceof Error
+          ? error.message
+          : 'Erro ao realizar transferência.',
+    };
   }
 }

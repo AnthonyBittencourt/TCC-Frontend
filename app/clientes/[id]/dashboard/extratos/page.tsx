@@ -8,8 +8,6 @@ import {
   ArrowLeft,
   AlertCircle,
   Loader2,
-  Bell,
-  Settings,
   ArrowUpRight,
   ArrowDownLeft,
   TrendingUp,
@@ -95,6 +93,7 @@ export default function ExtratoPage() {
       SAQUE: 'Saque',
       TRANSFERENCIA: 'Transferência',
       PAGAMENTO: 'Pagamento',
+      RENDIMENTO: 'Rendimento',
     };
     return labels[tipo] || tipo;
   };
@@ -209,13 +208,6 @@ ${transacoesFiltradas
         </Link>
 
         <div className="flex items-center gap-4">
-          <button className="relative p-2 text-gray-400 hover:text-white transition">
-            <Bell className="w-6 h-6" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-          </button>
-          <button className="p-2 text-gray-400 hover:text-white transition">
-            <Settings className="w-6 h-6" />
-          </button>
           <button
             onClick={handleLogout}
             className="px-4 py-2 bg-red-500/10 border border-red-500/30 text-red-300 rounded-lg hover:bg-red-500/20 transition flex items-center gap-2"

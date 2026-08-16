@@ -8,8 +8,6 @@ import {
   AlertCircle,
   CheckCircle,
   Loader2,
-  Bell,
-  Settings,
   Wallet,
   Check,
   Search,
@@ -133,50 +131,82 @@ export default function TransferirPage() {
     destinoTipo === 'propria' ? !!contaDestinoPropria : !!contaEncontrada;
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    if (!contaOrigem || !contaDestinoId) {
-      setError('Selecione a conta de origem e destino');
-      return;
-    }
+  setError(null);
 
-    if (!valor || parseFloat(valor) <= 0) {
-      setError('Informe o valor da transferência');
-      return;
-    }
+  if (!contaOrigem) {
+    setError('Selecione a conta de origem.');
+    return;
+  }
 
-    if (parseFloat(valor) > Number(contaOrigem.saldo)) {
-      setError('Saldo insuficiente na conta de origem');
-      return;
-    }
+  if (!contaDestinoId) {
+    setError('Selecione a conta de destino.');
+    return;
+  }
 
-    setLoading(true);
-    setError(null);
+  const valorNumerico = Number(valor);
 
-    try {
-      const ok = await realizarTransferencia({
-        contaOrigemId: contaOrigem.id,
-        contaDestinoId,
-        valor: parseFloat(valor),
-        descricao: descricao.trim() || undefined,
-      });
+  if (!Number.isFinite(valorNumerico) || valorNumerico <= 0) {
+    setError('Informe um valor válido para a transferência.');
+    return;
+  }
 
-      if (!ok) {
-        throw new Error('Erro ao processar transferência');
-      }
+  if (valorNumerico > Number(contaOrigem.saldo)) {
+    setError('Saldo insuficiente na conta de origem.');
+    return;
+  }
 
-      setSuccess(true);
-      setTimeout(() => {
-        router.push(`/clientes/${clienteId}/dashboard`);
-      }, 3000);
-    } catch (err) {
+  if (contaOrigem.id === contaDestinoId) {
+    setError(
+      'A conta de origem e destino não podem ser iguais.'
+    );
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    const resultado = await realizarTransferencia({
+      contaOrigemId: contaOrigem.id,
+      contaDestinoId,
+      valor: valorNumerico,
+      descricao: descricao.trim() || undefined,
+    });
+
+    if (!resultado.sucesso) {
       setError(
-        err instanceof Error ? err.message : 'Erro ao processar transferência'
+        resultado.erro ??
+          'Erro ao processar transferência.'
       );
-    } finally {
-      setLoading(false);
+
+      return;
     }
-  };
+
+    setSuccess(true);
+
+    setTimeout(() => {
+      router.push(
+        `/clientes/${clienteId}/dashboard`
+      );
+
+      router.refresh();
+    }, 2000);
+  } catch (err) {
+    console.error(
+      '[TransferirPage] erro:',
+      err
+    );
+
+    setError(
+      err instanceof Error
+        ? err.message
+        : 'Erro ao processar transferência.'
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -202,13 +232,6 @@ export default function TransferirPage() {
         </Link>
 
         <div className="flex items-center gap-4">
-          <button className="relative p-2 text-gray-400 hover:text-white transition">
-            <Bell className="w-6 h-6" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-          </button>
-          <button className="p-2 text-gray-400 hover:text-white transition">
-            <Settings className="w-6 h-6" />
-          </button>
           <button
             onClick={handleLogout}
             className="px-4 py-2 bg-red-500/10 border border-red-500/30 text-red-300 rounded-lg hover:bg-red-500/20 transition flex items-center gap-2"

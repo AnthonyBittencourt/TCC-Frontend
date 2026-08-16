@@ -136,7 +136,11 @@ export async function listarContas() {
 }
 
 export async function buscarConta(id: number) {
-  return request(`/conta/${id}`);
+    const dados = await request(`/conta/${id}`);
+
+  console.log("🔥 BUSCAR CONTA:", JSON.stringify(dados, null, 2));
+
+  return dados;
 }
 
 export async function criarConta(data: Record<string, unknown>) {
@@ -172,7 +176,11 @@ export async function listarAgencias() {
 }
 
 export async function buscarAgencia(id: number) {
-  return request(`/agencia/${id}`);
+  const dados = await request(`/agencia/${id}`);
+
+  console.log("🔥 BUSCAR AGENCIA:", JSON.stringify(dados, null, 2));
+
+  return dados;
 }
 
 export async function criarAgencia(data: {
@@ -261,7 +269,7 @@ export async function atualizarTransacao(
   data: Record<string, unknown>
 ) {
   return request(`/transacoes/${id}`, {
-    method: "PUT",
+    method: "PUT",  
     body: data,
   });
 }

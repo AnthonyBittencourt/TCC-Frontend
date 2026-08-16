@@ -1,10 +1,11 @@
-'use client';
+ 'use client';
 
 import Link from "next/link";
 import React, { useState } from 'react';
 import { Shield, Eye, EyeOff, ChevronRight, AlertCircle, Loader2, CreditCard, Key, RefreshCw, Copy, Check } from 'lucide-react';
 import { createConta } from './actions';
 import { useRouter, useParams } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 
 type TipoConta = 'CORRENTE' | 'POUPANCA' | 'UNIVERSITARIA' | 'SALARIO';
 
@@ -77,6 +78,7 @@ export default function CadastroContaPage() {
         data_abertura: form.data_abertura,
         pix:           form.pix,
       });
+      console.log('Resultado createConta:', conta)
 
       if (!conta) {
         setError('Não foi possível abrir a conta. Tente novamente.');
@@ -84,7 +86,8 @@ export default function CadastroContaPage() {
       }
 
       router.push(`/clientes/${clienteId}/dashboard`);
-    } catch {
+    } catch (err) {
+      if (isRedirectError(err)) throw err
       setError('Serviço indisponível. Tente novamente em instantes.');
     } finally {
       setLoading(false);
