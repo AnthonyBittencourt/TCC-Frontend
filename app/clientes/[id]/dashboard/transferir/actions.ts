@@ -20,6 +20,14 @@ export interface TransacaoConta {
   dataTransacao: string;
 }
 
+interface RealizarTransferencia {
+  contaOrigemId: number;
+  contaDestinoId: number;
+  valor: number;
+  descricao?: string;
+  categoria?: string; // ← novo
+}
+
 export interface Conta {
   id: number;
   tipo_conta: string;
@@ -61,12 +69,6 @@ export interface ContaEncontrada {
   clienteNome?: string;
 }
 
-interface RealizarTransferencia {
-  contaOrigemId: number;
-  contaDestinoId: number;
-  valor: number;
-  descricao?: string;
-}
 
 interface ErroBackend {
   error?: string;
@@ -290,6 +292,8 @@ export async function realizarTransferencia(
   erro?: string;
 }> {
   try {
+
+    
     const cookieStore = await cookies();
 
     const token =
@@ -348,21 +352,14 @@ export async function realizarTransferencia(
           Authorization: `Bearer ${token}`,
         },
 
-        body: JSON.stringify({
-          tipo: 'TRANSFERENCIA',
-
-          contaOrigemId:
-            dados.contaOrigemId,
-
-          contaDestinoId:
-            dados.contaDestinoId,
-
-          valor: dados.valor,
-
-          descricao:
-            dados.descricao?.trim() ||
-            undefined,
-        }),
+     body: JSON.stringify({
+      tipo: 'TRANSFERENCIA',
+      contaOrigemId: dados.contaOrigemId,
+      contaDestinoId: dados.contaDestinoId,
+      valor: dados.valor,
+      descricao: dados.descricao?.trim() || undefined,
+      categoria: dados.categoria || undefined, // ← adiciona aqui
+    }),
       }
     );
 

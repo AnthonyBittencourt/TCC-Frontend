@@ -3,7 +3,7 @@ export interface Conta {
   senha: string;
   tipo_conta: "CORRENTE" | "POUPANCA" | "UNIVERSITARIA" | "SALARIO";
   saldo: number;
-  data_abertura: Date;
+  data_abertura: string;
   pix: string;
 
   clientes: Cliente[];
@@ -16,16 +16,28 @@ export interface Cartao {
   id: number;
   tipoCartao: "DEBITO" | "CREDITO";
   numero_cartao: number;
-  cvv: string;  
+  cvv: string;
   validade: Date;
 }
 
 export interface Transacao {
   id: number;
-  tipo: "DEPOSITO" | "SAQUE" | "TRANSFERENCIA" | "PAGAMENTO" | "RENDIMENTO";
-  valor: number; // positivo = entrada, negativo = saída
-  descricao: string | null
-  dataTransacao: string; // ISO 8601
+  tipo:
+    | "DEPOSITO"
+    | "SAQUE"
+    | "TRANSFERENCIA"
+    | "PAGAMENTO"
+    | "RENDIMENTO";
+
+  valor: number;
+
+  descricao: string | null;
+
+  // O backend realmente retorna "data"
+  data: string;
+
+  contaOrigemId?: number | null;
+  contaDestinoId?: number | null;
 }
 
 export interface Cliente {
@@ -34,6 +46,7 @@ export interface Cliente {
   cpf: string;
   email: string;
   telefone: string;
+  data_nascimento: string;
   contas: Conta[];
 }
 
@@ -54,4 +67,55 @@ export interface Funcionario {
   admin: boolean;
   senha: string;
   agencias: Agencia[];
+}
+
+export interface GastoCategoria {
+  categoria: string;
+  valor: number;
+}
+
+export interface ResumoFinanceiro {
+  saldoTotal: number;
+  totalEntradas: number;
+  totalSaidas: number;
+  saldoPeriodo: number;
+  gastosPorCategoria: GastoCategoria[];
+}
+
+export interface DadosMensais {
+  mes: string;
+  entradas: number;
+  saidas: number;
+  saldo: number;
+  quantidadeTransacoes: number;
+}
+
+export interface EstatisticasFinanceiras {
+  mediaEntradas: number;
+  desvioPadraoEntradas: number;
+
+  mediaSaidas: number;
+  desvioPadraoSaidas: number;
+
+  mediaSaldoMensal: number;
+  desvioPadraoSaldoMensal: number;
+}
+
+export interface AnaliseFinanceira {
+  resumo: {
+    saldoTotal: number;
+    totalEntradas: number;
+    totalSaidas: number;
+    saldoPeriodo: number;
+  };
+
+  mensal: DadosMensais[];
+
+  estatisticas: EstatisticasFinanceiras;
+
+  categorias: GastoCategoria[];
+
+  maiorEntrada: DadosMensais | null;
+
+  maiorSaida: DadosMensais | null;
 }

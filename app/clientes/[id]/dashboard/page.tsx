@@ -20,13 +20,18 @@ import {
   X,
   CheckCircle,
   Trash,
+  PieChart,
+  Target,
+  TrendingDown,
+ 
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
-import { type Conta } from "../../../interfaces/clientes";
-
-import { getCliente, logout } from "./actions";
+import { type Conta, type ResumoFinanceiro } from "../../../interfaces/clientes";
+import { getCliente, getResumoCliente, logout } from "./actions";
 import { deleteConta } from "../cadastroConta/actions";
+import AnaliseFinanceiraCliente from "./analiseFinanceiraCliente";
+import { CATEGORIAS_INFO } from "../../lib/categorias";
 
 
 export default function DashboardPage() {
@@ -41,6 +46,28 @@ export default function DashboardPage() {
   const [saldoVisivel, setSaldoVisivel] = useState(true);
   const [contaSelecionada, setContaSelecionada] = useState(0);
   const [excluindoId, setExcluindoId] = useState<number | null>(null);
+  const [resumo, setResumo] = useState<ResumoFinanceiro | null>(null);
+  const [resumoLoading, setResumoLoading] = useState(true);
+  const [metaEconomia, setMetaEconomia] = useState(200);
+  const [editandoMeta, setEditandoMeta] = useState(false);
+
+  useEffect(() => {
+    const buscarResumo = async () => {
+      try {
+        setResumoLoading(true);
+        const dados = await getResumoCliente(Number(clienteId));
+        setResumo(dados);
+      } catch (err) {
+        console.error("[DASHBOARD] Erro ao buscar resumo:", err);
+      } finally {
+        setResumoLoading(false);
+      }
+    };
+
+    if (clienteId) {
+      buscarResumo();
+    }
+  }, [clienteId]);
 
   // ============================
   // NOTIFICAÇÕES
@@ -208,8 +235,8 @@ if (sucesso) {
     ? [...contaAtiva.transacoes]
         .sort(
           (a, b) =>
-            new Date(b.dataTransacao).getTime() -
-            new Date(a.dataTransacao).getTime(),
+            new Date(b.data).getTime() -
+            new Date(a.data).getTime(),
         )
         .slice(0, 8)
     : [];
@@ -232,8 +259,8 @@ if (sucesso) {
     )
     .sort(
       (a, b) =>
-        new Date(b.dataTransacao).getTime() -
-        new Date(a.dataTransacao).getTime(),
+        new Date(b.data).getTime() -
+        new Date(a.data).getTime(),
     )
     .slice(0, 8);
 
@@ -487,7 +514,7 @@ if (sucesso) {
 
                           <p className="text-gray-600 text-xs mt-1">
                             {formatarDataHora(
-                              notificacao.dataTransacao,
+                              notificacao.data,
                             )}
                           </p>
                         </div>
@@ -563,6 +590,8 @@ if (sucesso) {
                 </p>
               </div>
 
+        
+
               <div className="text-right">
                 <p className="text-gray-400 text-sm">
                   Saldo Total
@@ -608,6 +637,12 @@ if (sucesso) {
                   label: "Transferir",
                   color: "from-blue-500/20",
                   rota: `/clientes/${clienteId}/dashboard/transferir`,
+                },
+                {
+                  icon: PieChart,
+                  label: "Análise Financeira",
+                  color: "from-purple-500/20",
+                  rota: `/clientes/${clienteId}/dashboard/analiseFinanceira`,
                 },
                 {
                   icon: Plus,
@@ -833,7 +868,7 @@ if (sucesso) {
 
                             <td className="px-6 py-4 text-gray-400">
                               {formatarDataHora(
-                                transacao.dataTransacao,
+                                transacao.data,
                               )}
                             </td>
 
@@ -886,6 +921,8 @@ if (sucesso) {
             )}
           </div>
         </section>
+
+      <AnaliseFinanceiraCliente contas={contas} />
 
         {/* ============================
             FOOTER

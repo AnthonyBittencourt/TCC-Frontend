@@ -17,6 +17,7 @@ import {
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
 import { Cliente, Conta } from '../../../../interfaces/clientes';
+import { CATEGORIAS_LISTA } from '../../../lib/categorias';
 import {
   getCliente,
   buscarContaPorChavePix,
@@ -46,6 +47,7 @@ export default function TransferirPage() {
 
   const [valor, setValor] = useState('');
   const [descricao, setDescricao] = useState('');
+  const [categoria, setCategoria] = useState<string | null>(null);
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -172,6 +174,7 @@ export default function TransferirPage() {
       contaDestinoId,
       valor: valorNumerico,
       descricao: descricao.trim() || undefined,
+      categoria: destinoTipo === 'externa' ? categoria ?? undefined : undefined,
     });
 
     if (!resultado.sucesso) {
@@ -312,6 +315,7 @@ export default function TransferirPage() {
                             setContaEncontrada(null);
                             setChavePix('');
                             setErroBusca(null);
+                            setCategoria(null); 
                             setStep(2);
                             setError(null);
                           }}
@@ -373,6 +377,7 @@ export default function TransferirPage() {
                         setDestinoTipo('propria');
                         setContaEncontrada(null);
                         setErroBusca(null);
+                        setCategoria(null);
                       }}
                       className={`p-4 rounded-xl border-2 flex items-center justify-center gap-2 font-bold transition ${
                         destinoTipo === 'propria'
@@ -587,6 +592,51 @@ export default function TransferirPage() {
                       {descricao.length}/140
                     </p>
                   </div>
+
+                  {destinoTipo === 'externa' && (
+                    <div className="bg-red-900/20 border border-red-500/10 rounded-2xl p-6 backdrop-blur-sm">
+                      <label className="block text-white font-bold mb-1">
+                        Categoria do gasto
+                      </label>
+                      <p className="text-gray-500 text-xs mb-4">
+                        Ajuda a organizar seus gastos no ForjaBank Analytics
+                      </p>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {CATEGORIAS_LISTA.map(({ key, label, icon: Icon, cor }) => (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() =>
+                              setCategoria((atual) => (atual === key ? null : key))
+                            }
+                            className={`flex items-center gap-2 rounded-xl border-2 px-3 py-2.5 text-left transition ${
+                              categoria === key
+                                ? 'border-red-500 bg-red-900/40'
+                                : 'border-red-500/10 bg-red-950/30 hover:border-red-500/30'
+                            }`}
+                          >
+                            <span className={`w-7 h-7 rounded-full ${cor} flex items-center justify-center shrink-0`}>
+                              <Icon className="w-4 h-4 text-white" />
+                            </span>
+                            <span className="text-white text-sm font-medium truncate">
+                              {label}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+
+                      {categoria && (
+                        <button
+                          type="button"
+                          onClick={() => setCategoria(null)}
+                          className="text-gray-500 hover:text-gray-300 text-xs mt-3"
+                        >
+                          Limpar seleção
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   <div className="flex gap-4">
                     <button
